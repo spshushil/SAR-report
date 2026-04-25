@@ -35,8 +35,8 @@ export const loadDraft = async (draftKey: string): Promise<SarData | null> => {
     place: data.place ?? "",
     dateSigned: data.date_signed ?? "",
     proofUrls: (data.proof_urls as string[]) ?? [],
-    role: (data as any).role ?? "",
-    signatureUrl: (data as any).signature_url ?? "",
+    role: data.role ?? "",
+    signatureUrl: data.signature_url ?? "",
   };
 };
 
@@ -55,14 +55,27 @@ export const saveDraft = async (draftKey: string, sar: SarData) => {
     role: sar.role,
     signature_url: sar.signatureUrl,
   };
-  const { error } = await supabase.from("sar_drafts").upsert(payload as any, { onConflict: "draft_key" });
+  const { error } = await supabase.from("sar_drafts").upsert(payload, { onConflict: "draft_key" });
   if (error) throw error;
 };
 
 export const uploadProof = async (file: File): Promise<string> => {
-  const path = `${crypto.randomUUID()}-${file.name}`;
-  const { error } = await supabase.storage.from("sar-proofs").upload(path, file, { upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from("sar-proofs").getPublicUrl(path);
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${crypto.randomUUID()}.${fileExt}`;
+  const filePath = fileName;
+
+  const { error } = await supabase.storage
+    .from("sar-proofs")
+    .upload(filePath, file);
+
+  if (error) {
+    console.error("Upload Error:", error);
+    throw error;
+  }
+
+  const { data } = supabase.storage
+    .from("sar-proofs")
+    .getPublicUrl(filePath);
+
   return data.publicUrl;
 };
